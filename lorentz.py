@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 
 import numpy as np
-import sys
-import matplotlib.pyplot as plt
+import pathlib
 
 import argparse
 
@@ -68,13 +67,14 @@ if __name__ == "__main__":
 
     r = args.radius * m_to_ev
 
-    out = open(args.input[:-4] + "-l.hkl", "w")
+    input_file = pathlib.Path(args.input)
+    out = open(input_file.parent / f"{input_file.stem}-l{input_file.suffix}", "w")
 
     hs = []
     lfs = []
 
     reading_reflections = False
-    with open(args.input) as f:
+    with open(input_file) as f:
         for line in f:
             if line.startswith("End of reflections"):
                 out.write(line)
@@ -104,15 +104,8 @@ if __name__ == "__main__":
                 lfs.append(lf)
 
                 out.write(
-                    "%4d %4d %4d %7.2f        - %7.2f %.7d\n"
-                    % (
-                        int(h),
-                        int(k),
-                        int(l),
-                        float(i) * lf / 100,
-                        float(s) * lf / 100,
-                        int(n),
-                    )
+                    f"{int(h):4d} {int(k):4d} {int(l):4d} {float(i)*lf/10:10.2f}"
+                    f"        - {float(s) * lf/10:10.2f} {int(n):7d}\n"
                 )
 
             elif line.startswith("   h    k    l"):
