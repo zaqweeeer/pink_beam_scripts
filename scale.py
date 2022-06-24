@@ -18,18 +18,22 @@ def process_chunk(chunk, q, ks, ws, ico):
     reading_peaks = False
     reading_chunk = False
     reading_cell = False
+    new_chunk = []
     for line in chunk.split("\n"):
         if line.startswith("----- Begin chunk -----"):
             reading_chunk = True
             indexed = False
             r = 0.01e9
+            new_chunk.append(line)
 
         elif line.startswith("----- End chunk -----"):
             reading_chunk = False
+            new_chunk.append(line + "\n")
 
         elif reading_chunk:
 
             if not reading_reflections:
+                new_chunk.append(line)
                 if line.startswith("   h    k    l "):
                     reading_reflections = True
                     nr = 0
@@ -55,14 +59,13 @@ def process_chunk(chunk, q, ks, ws, ico):
                         pass
 
                 elif line.startswith("num_reflections"):
-                    num_refl_line = line
+                    num_refl_line = len(new_chunk) - 1
 
             elif reading_reflections:
                 if line.startswith("End of reflections"):
+                    new_chunk.append(line)
                     reading_reflections = False
-                    chunk = chunk.replace(
-                        num_refl_line, "num_reflections = %d" % (nt - nr)
-                    )
+                    new_chunk[num_refl_line] = "num_reflections = %d" % (nt - nr)
                     # print(nr, nt, r)
                 else:
                     nt += 1
@@ -105,17 +108,16 @@ def process_chunk(chunk, q, ks, ws, ico):
                     # contributing X-ray energy w > minw, integrated intensity is scaled by w:
                     if w / maxw >= minw and line.split()[3] not in ("nan", "-nan"):
                         spl = line.split()
-                        spl[3] = str(float(spl[3]) / w * maxw)
-                        chunk = chunk.replace(
-                            line,
+                        for i in range(9):
+                            spl[i] = float(spl[i])
+                        spl[3] = spl[3] / w * maxw
+                        new_chunk.append(
                             "%4d %4d %4d %10.2f %10.2f %10.2f %10.2f %6.1f %6.1f %s"
-                            % tuple((float(i) if i[0] != "p" else i for i in spl)),
+                            % tuple(spl),
                         )
                     else:
                         nr += 1
-                        chunk = chunk.replace(line + "\n", "")
-    # print(chunk)
-    q.put(chunk)
+    q.put("\n".join(new_chunk))
 
 
 def parse_args():
